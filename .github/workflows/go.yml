@@ -42,7 +42,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ github.repository }}
+          images: mpc913/devops_palermo
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
