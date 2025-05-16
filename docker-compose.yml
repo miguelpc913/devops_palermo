@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     container_name: go_api
     ports:
       - "8080:8080"
@@ -12,8 +13,8 @@ services:
       - db
     networks:
       - go_network
-    # ✅ No volume mount to avoid overwriting the binary!
-    volumes: []
+    volumes:
+      - ./:/app
 
   db:
     image: postgres:15

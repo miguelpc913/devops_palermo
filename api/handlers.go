@@ -1,47 +1,61 @@
 package api
 
 import (
-	"devops_project/models"
-	"devops_project/storage"
+	"devops_project/db/models"
+	"devops_project/repository"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
+type Handler struct {
+	repo *repository.Repository
+}
+
+func NewHandler(repo *repository.Repository) *Handler {
+	return &Handler{repo}
+}
+
 func welcome(c *gin.Context) {
 	c.String(http.StatusOK, "Welcome to your Gin API!")
 }
 
-func createUser(c *gin.Context) {
+func (h *Handler) createUser(c *gin.Context) {
 	var input models.UserInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	user := storage.CreateUser(input.Name, input.Email)
-	c.JSON(http.StatusCreated, user)
+	err := h.repo.CreateUser(input.Name, input.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+	c.JSON(http.StatusCreated, "User created successfully")
 }
 
-func getAllUsers(c *gin.Context) {
-	c.JSON(http.StatusOK, storage.GetAllUsers())
+func (h *Handler) getAllUsers(c *gin.Context) {
+	users, err := h.repo.GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+	c.JSON(http.StatusOK, users)
 }
 
-func getUser(c *gin.Context) {
+func (h *Handler) getUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	user, found := storage.GetUser(id)
-	if !found {
+	user, err := h.repo.GetUser(id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
 	}
 	c.JSON(http.StatusOK, user)
 }
 
-func updateUser(c *gin.Context) {
+func (h *Handler) updateUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
@@ -52,22 +66,23 @@ func updateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	user, ok := storage.UpdateUser(id, input.Name, input.Email)
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	user, err := h.repo.UpdateUser(id, input.Name, input.Email)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, user)
 }
 
-func deleteUser(c *gin.Context) {
+func (h *Handler) deleteUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	if !storage.DeleteUser(id) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	err = h.repo.DeleteUser(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 	c.Status(http.StatusNoContent)

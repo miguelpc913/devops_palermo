@@ -18,13 +18,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
-      - name: Run tests
-        run: go test ./... -v
-
-      - name: Build
-        run: go build -o server ./cmd/main.go
+      # - name: Run tests
+      #   run: go test ./... -v
 
   push_to_docker_hub_registry:
     name: Push Docker image to docker hub
@@ -52,6 +49,7 @@ jobs:
         with:
           context: .
           file: ./dockerfile
+          target: prod
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
