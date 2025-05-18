@@ -11,7 +11,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 	repo := repository.NewRepo(db)
 	handler := NewHandler(repo)
 
-	r.GET("/", welcome)
+	r.GET("/", handler.welcome)
 	r.GET("/panic", func(c *gin.Context) {
 		panic("this is a panic for testing purposes")
 	})

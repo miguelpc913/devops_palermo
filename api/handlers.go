@@ -17,7 +17,7 @@ func NewHandler(repo *repository.Repository) *Handler {
 	return &Handler{repo}
 }
 
-func welcome(c *gin.Context) {
+func (h *Handler) welcome(c *gin.Context) {
 	c.String(http.StatusOK, "Welcome to your Gin API!")
 }
 
