@@ -1,24 +1,20 @@
-name: CI/CD - Go + Docker
+name: Release driven pipeline
 
 on:
   push:
-    branches: ["main"]
     tags:
-      - "v*" # e.g., v1.0.0, v2.3.1
-  pull_request:
-    branches: ["main"]
+      - "v*" # Only runs on version tags like v1.0.0
 
 env:
   GO_VERSION: "1.24"
   IMAGE_NAME: mpc913/devops_palermo
 
 jobs:
-  test:
-    name: Run Tests
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Go
@@ -26,36 +22,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: go-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            go-${{ runner.os }}-
-
-      - name: Download dependencies
-        run: go mod tidy
-
       - name: Run Tests
-        run: go test -v ./...
-
-      - name: Vet code
-        run: go vet ./...
-
-  docker:
-    name: Build & Push Docker Image
-    runs-on: ubuntu-latest
-    needs: test
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+        run: |
+          go mod tidy
+          go test -v ./...
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -69,12 +39,8 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-
+            type=raw,value=latest
           labels: |
             org.opencontainers.image.title=devops_palermo
             org.opencontainers.image.description=Trabajo practico de devops para la universidad de palermo
@@ -85,7 +51,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build & Push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -94,3 +60,20 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  release:
+    name: Create GitHub Release
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body: |
+            Automated release for version ${{ github.ref_name }}
+            - Docker image: `docker pull ${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
