@@ -4,7 +4,8 @@ on:
   push:
     tags:
       - "v*" # Only runs on version tags like v1.0.0
-
+permissions:
+  contents: write
 env:
   GO_VERSION: "1.24"
   IMAGE_NAME: mpc913/devops_palermo
