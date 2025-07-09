@@ -2,6 +2,7 @@ name: Release driven pipeline
 
 on:
   push:
+    branches: ["main"]
     tags:
       - "v*" # Only runs on version tags like v1.0.0
 permissions:
