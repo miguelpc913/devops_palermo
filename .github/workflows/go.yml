@@ -66,8 +66,28 @@ jobs:
     name: Create GitHub Release
     needs: build-and-push
     runs-on: ubuntu-latest
-
+   
     steps:
+      - name: Generate Release Notes
+      id: generate_release_notes
+      run: |
+        # Get the current tag
+        current_tag="${{ github.ref_name }}"
+
+        # Fetch all tags and identify the previous one
+        previous_tag=$(git describe --tags --abbrev=0 $(git rev-list --tags --skip=1 --max-count=1))
+
+        # If no previous tag, get all commits
+        if [ -z "$previous_tag" ]; then
+          log=$(git log --pretty=format:"- %s (%h)" $current_tag)
+        else
+          log=$(git log --pretty=format:"- %s (%h)" "$previous_tag..$current_tag")
+        fi
+
+        echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+        echo "Changes in version $current_tag:" >> $GITHUB_ENV
+        echo "$log" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
