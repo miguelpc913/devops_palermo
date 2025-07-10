@@ -68,12 +68,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Changelog
+        uses: scottbrenner/generate-changelog-action@master
+        id: Changelog
+        env:
+          REPO: ${{ github.repository }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           name: "Release ${{ github.ref_name }}"
           body: |
+            ${{ steps.Changelog.outputs.changelog }}
             Automated release for version ${{ github.ref_name }}
             - Docker image: `docker pull ${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
         env:
