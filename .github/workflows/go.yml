@@ -66,35 +66,36 @@ jobs:
     name: Create GitHub Release
     needs: build-and-push
     runs-on: ubuntu-latest
-   
+
     steps:
-      - name: Generate Release Notes
-      id: generate_release_notes
-      run: |
-        # Get the current tag
-        current_tag="${{ github.ref_name }}"
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-        # Fetch all tags and identify the previous one
-        previous_tag=$(git describe --tags --abbrev=0 $(git rev-list --tags --skip=1 --max-count=1))
+      - name: Fetch all tags
+        run: git fetch --tags --force
 
-        # If no previous tag, get all commits
-        if [ -z "$previous_tag" ]; then
-          log=$(git log --pretty=format:"- %s (%h)" $current_tag)
-        else
-          log=$(git log --pretty=format:"- %s (%h)" "$previous_tag..$current_tag")
-        fi
+      - name: Generate release notes
+        id: generate_release_notes
+        run: |
+          current_tag="${{ github.ref_name }}"
+          previous_tag=$(git describe --tags --abbrev=0 $(git rev-list --tags --skip=1 --max-count=1 2>/dev/null) 2>/dev/null || echo "")
 
-        echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-        echo "Changes in version $current_tag:" >> $GITHUB_ENV
-        echo "$log" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+          if [ -z "$previous_tag" ]; then
+            echo "No previous tag found, getting all commits."
+            log=$(git log --pretty=format:"- %s (%h)")
+          else
+            echo "Previous tag: $previous_tag"
+            log=$(git log "$previous_tag..$current_tag" --pretty=format:"- %s (%h)")
+          fi
+
+          echo "Changes in version $current_tag:" > RELEASE_NOTES.md
+          echo "$log" >> RELEASE_NOTES.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
           name: "Release ${{ github.ref_name }}"
-          body: |
-            Automated release for version ${{ github.ref_name }}
-            - Docker image: `docker pull ${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
+          body_path: RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
